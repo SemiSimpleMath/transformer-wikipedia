@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
+import numpy as np
 
 
 # feed forward
@@ -12,18 +12,17 @@ class FeedForward(nn.Module):
         self.l1 = nn.Linear(d_model, d_middle)
         self.l2 = nn.Linear(d_middle, d_model)
         self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
-        return self.l2(self.dropout(F.relu(self.l1(x)))) # added drop out
+        return self.l2(self.dropout(F.relu(self.l1(x))))  # added drop out
 
 
-def attention(Q, K, V, mask=None):
+def attention(Q, K, V):
     d_k = Q.size(-1)
-    scores = Q @ K.transpose(-2, -1) / math.sqrt(d_k)
-    if mask is not None:
-        scores = scores.masked_fill(mask == 0, -1e9)
+    scores = Q @ K.transpose(-2, -1) / np.sqrt(d_k)
+    scores += torch.triu(torch.ones_like(scores) * float("-inf"), diagonal=1)  # mask subsequent positions
     attn = F.softmax(scores, dim=-1)
-    attn = attn @ V
-    return attn
+    return attn @ V
 
 
 class AttentionModule(nn.Module):
@@ -33,8 +32,8 @@ class AttentionModule(nn.Module):
         self.K = nn.Linear(d_model, d_K, bias=False)
         self.V = nn.Linear(d_model, d_V, bias=False)
 
-    def forward(self, q, k, v, mask=None):
-        y = attention(self.Q(q), self.K(k), self.V(v), mask)
+    def forward(self, q, k, v):
+        y = attention(self.Q(q), self.K(k), self.V(v))
         return y
 
 
@@ -44,14 +43,8 @@ class MultiHeadAttentionModule(nn.Module):
         self.linear = nn.Linear(h * d_V, d_model, bias=False)
         self.a_modules = nn.ModuleList(AttentionModule(d_model, d_Q, d_K, d_V) for _ in range(h))
 
-    def forward(self, q, k, v, mask=None):
-        combines = []
-        for layer in self.a_modules:
-            y = layer(q, k, v, mask)
-            combines.append(y)
-        y = torch.cat(combines, -1)
-        y = self.linear(y)
-        return y
+    def forward(self, q, k, v):
+        return self.linear(torch.cat([layer(q, k, v) for layer in self.a_modules], dim=-1))
 
 
 class DecoderBlock(nn.Module):
@@ -67,23 +60,14 @@ class DecoderBlock(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
 
-        #self.norm3 = nn.LayerNorm(d_model)
-        #self.norm4 = nn.LayerNorm(d_model)
-
-    def forward(self, x, mask):
+    def forward(self, x):
         """
         x: decoder input
         """
         normed_x = self.norm1(x)
-        x = x + self.dropout1(self.multi_head_masked(normed_x, normed_x, normed_x, mask))  # check this when should norm be taken
+        x = x + self.dropout1(self.multi_head_masked(normed_x, normed_x, normed_x))
         normed_x = self.norm2(x)
         x = x + self.dropout2(self.feed_forward(normed_x))
-
-        #x = self.norm1(x + self.dropout1(self.norm3(self.multi_head_masked(x, x, x, mask))))  # check this when should norm be taken
-        #x = self.norm2(x + self.dropout2(self.norm4(self.feed_forward(x))))
-
-        #x2 = x + self.dropout1(self.norm1(self.multi_head_masked(x, x, x, mask)))  # check this when should norm be taken
-        #x3 = x + self.dropout2(self.norm2(self.feed_forward(x2)))
 
         return x
 
@@ -102,11 +86,11 @@ class Decoder(nn.Module):
         if use_weight_tying:
             self.embedding.weight = self.l1.weight
 
-    def forward(self, dec_inp, pe, dec_mask=None):
-        x = self.embedding(dec_inp) * math.sqrt(self.d_model)
+    def forward(self, dec_inp, pe):
+        x = self.embedding(dec_inp) * np.sqrt(self.d_model)
         x = self.dropout(x + pe)
         for layer in self.layers:
-            x = layer(x, dec_mask)
+            x = layer(x)
         x = self.l1(x)
 
         return x

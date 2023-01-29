@@ -170,6 +170,11 @@ def loss_by_position(pred, target, bs, seq_len, loss):
 
 def get_lr(b, d_model):
     # lr schedule
+    # batch_size factor is to compensate that smaller batches result in bigger swings
+    # correspondigly lr should be smaller
+
+    bsf = 1/10
+
     warmup_steps = 4000
-    lr = d_model ** (-.5) * min((b + 1) ** (-.5), (b + 1) * warmup_steps ** (-1.5))
+    lr = bsf * d_model ** (-.5) * min((b + 1) ** (-.5), (b + 1) * warmup_steps ** (-1.5))
     return lr

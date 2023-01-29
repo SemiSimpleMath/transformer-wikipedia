@@ -40,9 +40,9 @@ def beam_search_2(model, params, width, max_depth, p_nuc, prompt):
         prompt = node['prompt']
         seq_len = prompt.shape[-1]
 
-        mask = utils.get_mask(seq_len).to(device)
+
         pe = utils.get_pe(seq_len, d_model).to(device)
-        out = model(prompt, pe, mask)
+        out = model(prompt, pe)
         last_row = out[:, -1, :]
         last_row = last_row.squeeze()
         children = nucleus_sampling(last_row, p_nuc, width)  # this is token indices and their corresponding probs
@@ -87,9 +87,9 @@ def beam_search(model, params, width, p, prompt, n):
         # generate the batches
         seq_len = prompt.shape[-1]
 
-        mask = utils.get_mask(seq_len).to(device)
+
         pe = utils.get_pe(seq_len, d_model).to(device)
-        b = model(prompt, pe, mask)
+        b = model(prompt, pe)
 
         b = b[:, -1, :]
         candidates = []
@@ -167,7 +167,7 @@ def generate_next_n_tokens(prompt, n, search_function, model, model_params, widt
 
 def main():
 
-    width = 4
+    width = 3
     p_nuc = .95
     n = 100
     tok = tokenizer.load_tokenizer()
@@ -191,3 +191,5 @@ def main():
 
     for t in result_tokens:
         print(tok.decode(t), end="")
+
+main()

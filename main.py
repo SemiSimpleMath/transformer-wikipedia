@@ -31,8 +31,7 @@ def train(model, opt, ds, tok, loss_func, bs, num_batches, seq_len, model_params
 
     start_time = datetime.datetime.now()
 
-    # mask and positional encoding
-    mask = utils.get_mask(seq_len).to(device)
+    #positional encoding
     pe = utils.get_pe(seq_len, d_model).to(device)
 
     for batch_num in range(start_batch_num, start_batch_num + num_batches):
@@ -45,7 +44,7 @@ def train(model, opt, ds, tok, loss_func, bs, num_batches, seq_len, model_params
         target = combined[:, 1:].to(device)
 
         # run through model
-        pred = model(src, pe, mask)
+        pred = model(src, pe)
 
         # compute loss
         pred = pred.permute(0, 2, 1)
@@ -114,7 +113,7 @@ def main():
 
     # Set the LOAD flag to True to load either latest model or a specified model
     # Set the LOAD flag to False to generate a default model
-    LOAD = True
+    LOAD = False
 
     if LOAD:
         # Initialize the file variable as None
