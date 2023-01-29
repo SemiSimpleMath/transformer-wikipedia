@@ -13,8 +13,8 @@ def get_data(file):
     return data
 
 
-d1 = get_data('./logs/log91961.txt')
-d2 = get_data('./logs/log55143.txt')
+d2 = get_data('logs/log91961.txt')
+d1 = get_data('logs/log55143.txt')
 
 x1 = d1['batch_num']
 y1 = d1['current_loss']

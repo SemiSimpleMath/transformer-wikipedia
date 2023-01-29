@@ -34,7 +34,7 @@ ds_path = "wikipedia"
 ds_file = "20220301.en"
 
 # tokenizer file path
-tok_file = "./data/tokenizer-32.json"
+tok_file = "data/tokenizer-32.json"
 
 # directory for storing log files
 log_directory = "./logs/"

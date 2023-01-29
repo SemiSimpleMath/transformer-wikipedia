@@ -8,9 +8,7 @@ import config
 from tokenizers import (
     decoders,
     models,
-    normalizers,
     pre_tokenizers,
-    processors,
     trainers,
     Tokenizer,
 )
