@@ -7,6 +7,7 @@ import config
 from torch.autograd import Variable
 import decoder
 import random
+import numpy as np
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -173,8 +174,32 @@ def get_lr(b, d_model):
     # batch_size factor is to compensate that smaller batches result in bigger swings
     # correspondigly lr should be smaller
 
-    bsf = 1/10
+    bsf = config.batch_scale_factor
 
     warmup_steps = 4000
     lr = bsf * d_model ** (-.5) * min((b + 1) ** (-.5), (b + 1) * warmup_steps ** (-1.5))
     return lr
+
+# This implements cyclic lr
+def relative(batch_num, stepsize, scaler):
+    cycle = np.floor(1 + batch_num / (2 * stepsize))
+    x = abs(batch_num / stepsize - 2 * cycle + 1)
+    return max(0, (1 - x)) * scaler
+
+def cyclical_lr(stepsize, batch_num, min_lr=2.e-5, max_lr=2.5e-4):
+    # Scaler: we can adapt this if we do not want the triangular CLR
+    scaler = 1
+    return min_lr + (max_lr - min_lr) * relative(batch_num, stepsize, scaler)
+
+
+def get_cyclic_lr(b, d_model, stepsize):
+    min_lr = 1/6 * d_model ** (-.5) * (b + 1) ** (-.5)
+    max_lr = d_model ** (-.5) * (b + 1) ** (-.5)
+    cl = cyclical_lr(stepsize, b, min_lr, max_lr)
+
+    warmup_steps = 4000
+    warmup_lr = (b + 1) * warmup_steps ** (-1.5)
+
+    return min(cl, warmup_lr)
+
+

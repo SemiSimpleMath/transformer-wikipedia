@@ -75,7 +75,9 @@ def get_batch(ds, tok, bs, batches_done, L):
     starts = (torch.rand(bs) * torch.clamp(firstpad - L + 1, min=0).to(torch.float)).to(torch.int64)
     if firstpad.max() < L:
         print(f"firstpad.max() < L! {firstpad.max()} {L}")
-    idx = starts.unsqueeze(-1) + torch.arange(min(L, firstpad.max()))
+        print(sample.shape)
+        print(sample)
+    idx = starts.unsqueeze(-1) + torch.arange(L)
     combined = torch.gather(sample, 1, idx).to(utils.device)
 
     return combined

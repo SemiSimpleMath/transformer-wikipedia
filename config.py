@@ -24,6 +24,8 @@ model_directory = '.\\models\\'
 # batch size for training
 batch_size = 16
 
+batch_scale_factor = 1
+
 # total number of batches for training
 num_batches = 500000
 
@@ -42,7 +44,7 @@ log_file = "log.txt"
 save_every = 1000
 
 # frequency at which output is generated during training
-output_every = 200
+output_every = 100
 
 # frequency at which learning rate is updated during training
-lr_step = 100
+lr_step = 1

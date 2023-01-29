@@ -85,7 +85,7 @@ def train(model, opt, ds, tok, loss_func, bs, num_batches, seq_len, model_params
             start_time = datetime.datetime.now()
 
         if batch_num % config.lr_step == 0 and batch_num != start_batch_num:
-            lr = utils.get_lr(batch_num, d_model)
+            lr = utils.get_cyclic_lr(batch_num, d_model, stepsize=400)
             for g in opt.param_groups:
                 g['lr'] = lr
 
@@ -113,7 +113,7 @@ def main():
 
     # Set the LOAD flag to True to load either latest model or a specified model
     # Set the LOAD flag to False to generate a default model
-    LOAD = False
+    LOAD = True
 
     if LOAD:
         # Initialize the file variable as None
