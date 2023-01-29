@@ -1,7 +1,7 @@
-
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
+from transformers import GPT2TokenizerFast
 
 import config
 
@@ -15,13 +15,11 @@ from tokenizers import (
     Tokenizer,
 )
 
-def tokenizer_train():
 
+def tokenizer_train_wiki_103():
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
 
-
     trainer = BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"])
-
 
     tokenizer.pre_tokenizer = Whitespace()
 
@@ -30,47 +28,68 @@ def tokenizer_train():
 
     return tokenizer
 
+
 def tokenizer_save(tok):
-    tok.save("data/tokenizer-wiki-32k.json")
+    tok.save("data/tokenizer-32.json")
+
 
 def tokenizer_load(path):
     tokenizer = Tokenizer.from_file(path)
     return tokenizer
 
 
-def batch_iterator():
+def batch_iterator(ds):
     bs = 1000
     for i in range(0, len(ds), bs):
-        yield ds['train'][i : i + bs]["text"]
-
-from datasets import load_dataset
-ds = load_dataset("wikipedia", "20220301.en")
+        yield ds['train'][i: i + bs]["text"]
 
 
-tok = Tokenizer(models.BPE())
+def load_wikipedia():
+    from datasets import load_dataset
+    ds = load_dataset("wikipedia", "20220301.en")
+    return ds
 
-tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
 
-trainer = trainers.BpeTrainer(vocab_size=32767, special_tokens=["<|endoftext|>"])
+def train_tokenizer():
+    ds = load_wikipedia()
+    tok = Tokenizer(models.BPE())
 
-tok.train_from_iterator(batch_iterator(), trainer=trainer)
+    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
 
-tokenizer_save(tok)
+    # trainer = trainers.BpeTrainer(vocab_size=30000, special_tokens=["<|endoftext|>"])
 
-encoding = tok.encode("Let's test this tokenizer.")
-print(encoding.tokens)
+    trainer = trainers.BpeTrainer(vocab_size=32767, special_tokens=["<|endoftext|>"])
 
-tok.decoder = decoders.ByteLevel()
+    tok.train_from_iterator(batch_iterator(ds), trainer=trainer)
 
-from transformers import GPT2TokenizerFast
+    tokenizer_save(tok)
 
-wrapped_tokenizer = GPT2TokenizerFast(tokenizer_object=tok)
+    encoding = tok.encode("Let's test this tokenizer.")
+    print(encoding.tokens)
+
+    tok.decoder = decoders.ByteLevel()
+
+    from transformers import GPT2TokenizerFast
+
+    wrapped_tokenizer = GPT2TokenizerFast(tokenizer_object=tok)
+
+    return wrapped_tokenizer
+
 
 def load_tokenizer():
     toke = Tokenizer.from_file(config.tok_file)
     toke.decoder = decoders.ByteLevel()
     tok = GPT2TokenizerFast(tokenizer_object=toke)
     tok.add_special_tokens({'pad_token': '[PAD]'})
-
     return tok
+
+def tokenizer_test(tok):
+    encoding = tok.encode("Let's test this tokenizer.")
+    print(encoding)
+    print(tok.decode(encoding))
+
+if __name__ == '__main__':
+    tok = train_tokenizer()
+    tok.add_special_tokens({'pad_token': '[PAD]'})
+    tokenizer_test(tok)
 

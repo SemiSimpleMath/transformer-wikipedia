@@ -1,21 +1,19 @@
 import torch
-import pandas as pd
-import re
 import random
 import utils
+
 
 class DataLoader:
     def __init__(self, data, tok):
         self.ds = data
         self.tok = tok
 
-
     def get_batch(self, bs, min_seq_len):
         src_batch = []
         target_batch = []
 
         while len(src_batch) < bs:
-            r = random.randint(0, 6458670-1)
+            r = random.randint(0, 6458670 - 1)
             article = self.ds['train'][r]['text']
             article = article.split()
             art_len = len(article)
@@ -63,11 +61,10 @@ def text_to_model_input(text, tokenizer):
     tokens = text_to_token(text, tokenizer)
     return torch.LongTensor(tokens)
 
-def get_justin_batch(ds, tok, bs, batches_done, L):
 
-
+def get_batch(ds, tok, bs, batches_done, L):
     sample = tok(
-        ds['train'][(batches_done) * bs: (batches_done + 1) * bs]['text'],
+        ds['train'][batches_done * bs: (batches_done + 1) * bs]['text'],
         padding=True,
         truncation=True,
         return_token_type_ids=False,

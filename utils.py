@@ -8,6 +8,8 @@ from torch.autograd import Variable
 import decoder
 import random
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 def to_cuda(model):
     """Sends model from CPU to CUDA."""
@@ -15,6 +17,7 @@ def to_cuda(model):
     if isinstance(model, nn.Module):
         for child in model.children():
             to_cuda(child)
+
 
 def optimizer_to(optim, device):
     for param in optim.state.values():
@@ -30,8 +33,6 @@ def optimizer_to(optim, device):
                     if subparam._grad is not None:
                         subparam._grad.data = subparam._grad.data.to(device)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 def log(file_id, log_data, log_screen=True):
     path = config.log_directory
@@ -45,7 +46,6 @@ def log(file_id, log_data, log_screen=True):
 
 
 def most_recent_file(directory):
-
     files = os.listdir(directory)
 
     latest_file = ''
@@ -61,10 +61,7 @@ def most_recent_file(directory):
     return latest_file
 
 
-
-
 def get_mask(size):
-
     # Create a (size, size) tensor filled with ones
     mask = torch.ones((size, size))
 
@@ -90,9 +87,7 @@ def get_pe(seq_len, d_model):
     return Variable(pe, requires_grad=False)
 
 
-
 def load_model(file):
-
     checkpoint = torch.load(file)
     model_params = {}
     num_blocks = model_params['num_blocks'] = checkpoint['num_blocks']
@@ -109,9 +104,8 @@ def load_model(file):
 
     model_params['start_batch_num'] = checkpoint['start_batch_num']
 
-    model = decoder.Decoder(num_blocks, d_model, d_middle, vocab_size, dropout, h, d_q, d_k, d_v)
-    opt = torch.optim.Adam(model.parameters(), lr=1, betas=(0.9, 0.98), eps=1e-9)
-
+    model = decoder.Decoder(num_blocks, d_model, d_middle, vocab_size, dropout, h, d_q, d_k, d_v, use_weight_tying=True)
+    opt = torch.optim.AdamW(model.parameters(), lr=1, betas=(0.9, 0.98), eps=1e-9)
     model.load_state_dict(checkpoint['model_state_dict'])
     opt.load_state_dict(checkpoint['optimizer_state_dict'])
 
@@ -132,7 +126,7 @@ def default_model(vocab_size):
     model_params['start_batch_num'] = 0
     model_params['id'] = random.randint(0, 100000)
     model = decoder.Decoder(num_blocks, d_model, d_middle, vocab_size, dropout, h, d_q, d_k, d_v, use_weight_tying=True)
-    opt = torch.optim.AdamW(model.parameters(), lr=1, betas=(0.9, 0.98), eps=1e-9)
+    opt = torch.optim.AdamW(model.parameters(), lr=2.5e-4, betas=(0.9, 0.98), eps=1e-9)
     for p in model.parameters():
         if p.dim() > 1:
             nn.init.xavier_uniform_(p)
@@ -156,7 +150,6 @@ def save_model(model, opt, model_params):
         'd_v': model_params['d_v'],
         'start_batch_num': model_params['start_batch_num'],
         'id': model_params['id'],
-
     }, path)
 
     print(f"Saving model: {path}")
@@ -175,5 +168,8 @@ def loss_by_position(pred, target, bs, seq_len, loss):
     return loss_by_pos
 
 
-
-
+def get_lr(b, d_model):
+    # lr schedule
+    warmup_steps = 4000
+    lr = d_model ** (-.5) * min((b + 1) ** (-.5), (b + 1) * warmup_steps ** (-1.5))
+    return lr
